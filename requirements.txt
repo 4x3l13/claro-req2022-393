@@ -1,0 +1,11 @@
+#python==3.10.5
+pyodbc==4.0.32
+mysql-connector-python==8.0.29
+cx-Oracle==8.3.0
+Sphinx==5.0.1
+sphinx-rtd-theme==1.0.0
+pytest==7.1.2
+pylint==2.14.3
+pyinstaller==5.1
+openpyxl==3.0.10
+pysftp==0.2.9

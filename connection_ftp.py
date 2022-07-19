@@ -28,28 +28,18 @@ class ConnectionFTP:
 
     def __init__(self):
         """
-                Los datos están en la sección FTP en el archivo JSON los cuales son:\n
-                * **FTP_TYPE:** Tipo de servidor, se permiten (FTP, SFTP).\n
-                * **FTP_SERVER:** Host del servidor.\n
-                * **FTP_PORT:** Puerto al que nos vamos a conectar.\n
-                * **FTP_USER:** Usuario para conectar al servidor.\n
-                * **FTP_PASSWORD:**  Clave para conectar al servidor.\n
-                * **FTP_PATH:** Directorio en el que se va a trabajar.\n
-                """
+        Los datos están en la sección FTP en el archivo JSON los cuales son:\n
+        * **FTP_TYPE:** Tipo de servidor, se permiten (FTP, SFTP).\n
+        * **FTP_SERVER:** Host del servidor.\n
+        * **FTP_PORT:** Puerto al que nos vamos a conectar.\n
+        * **FTP_USER:** Usuario para conectar al servidor.\n
+        * **FTP_PASSWORD:**  Clave para conectar al servidor.\n
+        * **FTP_PATH:** Directorio en el que se va a trabajar.\n
+        """
         self.__this = self.__class__.__name__ + '.'
         self.__connection = None
         self.__connection_data = {}
-        try:
-            config = self._read_setup()
-            if config.get_status():
-                self.__connection_data["type"] = config.get_data()["FTP_TYPE"]
-                self.__connection_data["server"] = config.get_data()["FTP_SERVER"]
-                self.__connection_data["port"] = config.get_data()["FTP_PORT"]
-                self.__connection_data["user"] = config.get_data()["FTP_USER"]
-                self.__connection_data["password"] = config.get_data()["FTP_PASSWORD"]
-                self.__connection_data["path"] = config.get_data()["FTP_PATH"]
-        except Exception as exc:
-            print(self.__this + inspect.stack()[0][3] + ': ' + str(exc))
+        self._read_setup()
 
     def change_path(self):
         """
@@ -173,18 +163,24 @@ class ConnectionFTP:
         Llama a 'read_setup()' desde 'main_functions', para leer y obtener los datos desde el JSON.
 
         Returns:
-            **answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+            **answer (Class):** Devuelve un estado y mensaje de la función.
 
         """
         # Invoke class Answer.
         answer = Answer()
         try:
-            # Read CONNECTION configuration from JSON file.
-            config = mf.read_setup(item='FTP').get_data()
+            # Read FTP configuration from JSON file.
+            config = mf.read_setup(item='FTP')
+            if config.get_status():
+                self.__connection_data["type"] = config.get_data()["FTP_TYPE"]
+                self.__connection_data["server"] = config.get_data()["FTP_SERVER"]
+                self.__connection_data["port"] = config.get_data()["FTP_PORT"]
+                self.__connection_data["user"] = config.get_data()["FTP_USER"]
+                self.__connection_data["password"] = config.get_data()["FTP_PASSWORD"]
+                self.__connection_data["path"] = config.get_data()["FTP_PATH"]
             # Fill answer object with status, message and data.
             answer.load(status=True,
-                        message='Configuration obtained FTP',
-                        data=config)
+                        message='Configuration obtained from FTP')
         except Exception as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)

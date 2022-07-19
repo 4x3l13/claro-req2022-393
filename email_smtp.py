@@ -39,17 +39,7 @@ class EmailSMTP:
         self.__server = {}
         self.__email = EmailMessage()
         self.__connection = None
-        try:
-            config = self._read_setup()
-            if config.get_status():
-                self.__server["smtp"] = config.get_data()["SMTP"]
-                self.__server["port"] = config.get_data()["PORT"]
-                self.__email["From"] = config.get_data()["FROM"]
-                self.__server["password"] = config.get_data()["PASSWORD"]
-                self.__email["To"] = config.get_data()["TO"]
-                self.__email["Subject"] = config.get_data()["SUBJECT"]
-        except Exception as exc:
-            print(self.__this + inspect.stack()[0][3] + ': ' + str(exc))
+        self._read_setup()
 
     def _close_connection(self):
         """
@@ -109,7 +99,7 @@ class EmailSMTP:
         para leer y obtener los datos desde archivo JSON.
 
         Returns:
-            **Answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+            **Answer (Class):** Devuelve un estado y mensaje de la función.
 
         """
 
@@ -117,11 +107,17 @@ class EmailSMTP:
         answer = Answer()
         try:
             # Read EMAIL configuration from JSON file.
-            config = mf.read_setup(item='EMAIL').get_data()
+            config = mf.read_setup(item='EMAIL')
+            if config.get_status():
+                self.__server["smtp"] = config.get_data()["SMTP"]
+                self.__server["port"] = config.get_data()["PORT"]
+                self.__email["From"] = config.get_data()["FROM"]
+                self.__server["password"] = config.get_data()["PASSWORD"]
+                self.__email["To"] = config.get_data()["TO"]
+                self.__email["Subject"] = config.get_data()["SUBJECT"]
             # Fill answer object with status, message and data.
             answer.load(status=True,
-                        message='Read EMAIL setup',
-                        data=config)
+                        message='Configuration obtained from EMAIL')
         except Exception as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)

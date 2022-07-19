@@ -41,20 +41,7 @@ class Connection:
         self.__this = self.__class__.__name__ + '.'
         self.__connection = None
         self.__connection_data = {}
-        try:
-            config = self._read_setup()
-            if config.get_status():
-                self.__connection_data["type"] = config.get_data()["DB_TYPE"]
-                self.__connection_data["driver"] = config.get_data()["DB_DRIVER"]
-                self.__connection_data["server"] = config.get_data()["DB_SERVER"]
-                self.__connection_data["database"] = config.get_data()["DB_NAME"]
-                self.__connection_data["user"] = config.get_data()["DB_USER"]
-                self.__connection_data["password"] = config.get_data()["DB_PASSWORD"]
-                if self.__connection_data["type"] == "ORACLE":
-                    libraries = mf.get_current_path().get_data() + self.__connection_data["driver"]
-                    cx_Oracle.init_oracle_client(lib_dir=libraries)
-        except Exception as exc:
-            print(self.__this + inspect.stack()[0][3] + ': ' + str(exc))
+        self._read_setup()
 
     def _close_connection(self):
         """
@@ -184,7 +171,7 @@ class Connection:
         Llama a 'read_setup()' desde 'main_functions', para leer y obtener los datos desde el JSON.
 
         Returns:
-            **answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+            **answer (Class):** Devuelve un estado y mensaje de la función.
 
         """
 
@@ -192,11 +179,20 @@ class Connection:
         answer = Answer()
         try:
             # Read CONNECTION configuration from JSON file.
-            config = mf.read_setup(item='CONNECTION').get_data()
+            config = mf.read_setup(item='CONNECTION')
+            if config.get_status():
+                self.__connection_data["type"] = config.get_data()["DB_TYPE"]
+                self.__connection_data["driver"] = config.get_data()["DB_DRIVER"]
+                self.__connection_data["server"] = config.get_data()["DB_SERVER"]
+                self.__connection_data["database"] = config.get_data()["DB_NAME"]
+                self.__connection_data["user"] = config.get_data()["DB_USER"]
+                self.__connection_data["password"] = config.get_data()["DB_PASSWORD"]
+                if self.__connection_data["type"] == "ORACLE":
+                    libraries = mf.get_current_path().get_data() + self.__connection_data["driver"]
+                    cx_Oracle.init_oracle_client(lib_dir=libraries)
             # Fill answer object with status, message and data.
             answer.load(status=True,
-                        message='Configuration obtained CONNECTION',
-                        data=config)
+                        message='Configuration obtained from CONNECTION')
         except Exception as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)

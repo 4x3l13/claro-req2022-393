@@ -32,7 +32,8 @@ class Req2022_393:
         self.__this = self.__class__.__name__ + '.'
         self.__ftp = ConnectionFTP()
         self.__email = EmailSMTP()
-        self._load()
+        ftp = self.__ftp.get_connection()
+        # self._load()
 
     def _load(self):
         """
@@ -74,6 +75,9 @@ class Req2022_393:
     def _create_book(self, data):
         """
         Crear un libro de Excel xlsx
+
+        Params:
+            **data (list):** Lista con los nombres que tendrán los archivos y los queries.
         Returns:
             **answer (Class):** Devuelve un estado y mensaje de la función.
         """
@@ -186,12 +190,22 @@ class Req2022_393:
         return answer
 
     def _read_data(self, query):
+        """
+        Obtiene los datos que devuelven un query desde la base de datos.
+
+        Params:
+            **query (String):** Sentencia select.
+
+        Returns:
+            **answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+        """
+
         cnx = Connection()
         # Invoke class Answer.
         answer = Answer()
         try:
             # Write on the Log file.
-            self._write_log_file(message='Opening connection and Getting data from Data Base')
+            self._write_log_file(message='Opening connection and Getting data')
             cnx1 = cnx.read_data(query=query, datatype='list')
             # Fill answer object with status, message and data.
             if cnx1.get_status():
@@ -212,44 +226,14 @@ class Req2022_393:
         # Return answer object.
         return answer
 
-    def _read_setup(self, item):
+    def _send_file_ftp(self):
         """
-        Llama a 'read_setup()' desde 'main_functions' para la lectura de la configuración
-        en el JSON.
-
-        Args:
-            **item (String):** Nombre del item a leer del archivo de configuración.
+        Llama la función 'upload_file' de la clase 'ConnectionFTP' para enviar un archivo al FTP.
 
         Returns:
-            **answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+            **answer (Class):** Devuelve un estado y mensaje de la función.
+
         """
-
-        # Invoke class Answer.
-        answer = Answer()
-        # Write on the Log file.
-        self._write_log_file(message='Reading ' + item + ' configuration from JSON file')
-        try:
-            # Read STORED_PROCEDURE configuration from JSON file.
-            config = mf.read_setup(item=item)
-            # Fill answer object with status, message and data.
-            answer.load(status=config.get_status(),
-                        message=config.get_message(),
-                        data=config.get_data())
-        except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
-        finally:
-            # Write on the Log file.
-            self._write_log_file(message=answer.get_message())
-        # Return answer object.
-        return answer
-
-    def _send_file_ftp(self):
         # Invoke class Answer.
         answer = Answer()
         # Open connection to FTP server and write on txt log
@@ -285,9 +269,9 @@ class Req2022_393:
 
     def _send_email(self, body):
         """
-        Llama la función 'send_email' de la clase 'Email_smtp' para enviar un correo electrónico.
+        Llama la función 'send_email' de la clase 'EmailSMTP' para enviar un correo electrónico.
 
-        Args:
+        Params:
             **body (String):** Cuerpo del correo electrónico.
 
         Returns:
@@ -327,9 +311,10 @@ class Req2022_393:
         """
 
         # Write on the Log file.
+        final_message = '[' + mf.get_current_time().get_data() + ']: ' + message + '.'
         mf.write_file_text(file_name='Log/Log' + mf.get_current_date().get_data(),
-                           message='[' + mf.get_current_time().get_data() + ']: ' + message + '.' + '\n')
-
+                           message=final_message + '\n')
+        print(final_message)
 
 
 if __name__ == '__main__':

@@ -128,6 +128,9 @@ class Connection:
             if cnx.get_status():
                 # Create cursor object.
                 cursor = self.__connection.cursor()
+                cursor.prefetchrows = 100000
+                cursor.arraysize = 100000
+
                 # Execute query
                 cursor.execute(query)
                 # Gets data
@@ -150,8 +153,6 @@ class Connection:
                                 data=[columns, data])
                 # Close cursor
                 cursor.close()
-                # Close connection
-                self._close_connection()
             else:
                 answer.load(status=cnx.get_status(),
                             message=cnx.get_message())
@@ -163,6 +164,9 @@ class Connection:
             # Fill answer object with status and error message.
             answer.load(status=False,
                         message=error_message)
+        finally:
+            # Close connection
+            self._close_connection()
         # Return answer object.
         return answer
 

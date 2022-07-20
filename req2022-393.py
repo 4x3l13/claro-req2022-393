@@ -30,47 +30,37 @@ class Req2022_393:
 
     def __init__(self):
         self.__this = self.__class__.__name__ + '.'
-        self.__ftp = ConnectionFTP()
-        self.__email = EmailSMTP()
-        ftp = self.__ftp.get_connection()
-        # self._load()
+        self.__setup = {}
+        self._read_setup()
+        self._load()
 
     def _load(self):
         """
         This method has all the logic of the program.
         """
-        try:
-            # Create Log folders if they don't exist.'
-            folder = self._create_folder()
-            if folder.get_status():
-                # Write on the Log file.
-                self._write_log_file(message="Application has been launched")
-                # Write on the Log file.
-                self._write_log_file(message=folder.get_message())
-                # Read to get file names and queries from txt file
-                names_queries = self._get_names_and_queries().get_data()
-                # Create pool
-                pool = Pool(processes=cpu_count())
-                # Create xlsx file.
-                data = pool.map(self._create_book, names_queries)
-                # Close pool
-                pool.close()
-                pool.join()
-                status = True
-                for item in data:
-                    if not item.get_status():
-                        status = False
-                        self._send_email(body=item.get_message())
+        # Create Log folders if they don't exist.'
+        folder = self._create_folder()
+        # Validate folder creation status
+        if folder.get_status():
+            # Write on the Log file.
+            self._write_log_file(message="Application has been launched")
+            self._write_log_file(message=folder.get_message())
+            # Start function to connect to DB
+            pool = self._pool_connection()
+            # Validate if data exists
+            if pool is not None:
+                # Loop on pool data
+                for item in pool:
+                    # Validate item
+                    if not item:
+                        # Send email
+                        self._send_email(body="El error se presentó pool_connection, por favor revisar el archivo log.")
+                        # Break loop
                         break
-                if status:
-                    # Send file to ftp
-                    self._send_file_ftp()
-                # Write on the Log file.
-                self._write_log_file(message="Application has been finished")
-            else:
-                print("Folder were not created")
-        except Exception as exc:
-            print(exc)
+            # Send file to ftp
+            self._send_file_ftp()
+            # Write on the Log file.
+            self._write_log_file(message="Application has been finished")
 
     def _create_book(self, data):
         """
@@ -78,41 +68,32 @@ class Req2022_393:
 
         Params:
             **data (list):** Lista con los nombres que tendrán los archivos y los queries.
-        Returns:
-            **answer (Class):** Devuelve un estado y mensaje de la función.
-        """
 
-        # Invoke class Answer.
-        answer = Answer()
+        Returns:
+            **status (boolean):** estado del método.
+
+        """
+        # Variable process
+        process = inspect.stack()[0][3]
+        # Write on the Log file.
+        self._write_log_file(message="Start process " + process)
+        # Variable status
+        status = True
         try:
             # Read data
             values = self._read_data(data[1])
-            if values.get_status():
-                # Replacing file name
-                name_file = "Files/" + str(data[0]).replace("XXXXXXXXXX",
-                                                            mf.get_current_date(days=0, separator="_").get_data())
-                # Creates book
-                mf.write_file_xlsx(name_file, values.get_data()[0], values.get_data()[1])
-                # Fill answer object with status, message and data.
-                answer.load(status=True,
-                            message=name_file + " file was created")
-            else:
-                # Fill answer object with status, message and data.
-                answer.load(status=values.get_status(),
-                            message=values.get_message())
+            # Validate values variable
+            if values is not None:
+                # Creates book and Write on the Log file.
+                self._write_log_file(message=mf.write_file_xlsx("Files/" + data[0], values[0], values[1]).get_message())
         except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
+            # Write on the Log file.
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
+            status = False
         finally:
             # Write on the Log file.
-            self._write_log_file(message=answer.get_message())
-        # Return answer object.
-        return answer
+            self._write_log_file(message="End process " + process)
+        return status
 
     def _create_folder(self):
         """
@@ -127,14 +108,15 @@ class Req2022_393:
         # Invoke class Answer.
         answer = Answer()
         try:
-            # Folder names
+            # Folder names to create.
             folders = ["Log", "Files"]
+            # Start loop on folders
             for folder in folders:
                 # Create folder.
                 mf.create_folder(folder_name=folder)
             # Fill answer object with status, message and data.
             answer.load(status=True,
-                        message="Folders Ok")
+                        message="Folders are Ok")
         except Exception as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
@@ -148,46 +130,86 @@ class Req2022_393:
 
     def _get_names_and_queries(self):
         """
-        Obtiene los nombres de los archivos y su respectiva consulta.
+        Obtiene los nombres de los archivos y su respectiva consulta desde el JSON
+        luego son pasados por los diferentes clusters.
 
         Returns:
-            **answer (Class):** Devuelve un estado, mensaje y dato (nombres y queries) de la función.
+            **names_queries (list):** Devuelve una lista con nombres y queries.
         """
 
-        # Invoke class Answer.
-        answer = Answer()
-        # Variable with the file name to read
-        file = "queries.txt"
+        # Variable process
+        process = inspect.stack()[0][3]
         # Write on the Log file.
-        self._write_log_file(message='Reading ' + file + ' file')
+        self._write_log_file(message="Start process " + process)
+        # Variable names_queries
+        names_queries = []
         try:
-            # Gets list about the flat file
-            all_list = mf.read_file(file).get_data()
-            # Variables
-            query_list = []
-            name_list = []
-            for index, item in enumerate(all_list):
-                if ((index + 1) % 2) == 0:
-                    query_list.append(str(item).strip())
-                else:
-                    name_list.append(str(item).strip())
-            names_queries = []
-            for index in range(len(name_list)):
-                names_queries.append([name_list[index], query_list[index]])
-            answer.load(True, 'File was read', names_queries)
+            # Get data
+            data = self._read_data(query=self.__setup["CLUSTERS"])
+            # Validate data.
+            if data is not None:
+                # Get yesterday's date.
+                yesterday = mf.get_current_date(days=-1,
+                                                separator="-").get_data()
+                # Read queries from JSON file.
+                queries = mf.read_setup("QUERIES").get_data()
+                # Loop on queries
+                for query in queries:
+                    # Loop on data values
+                    for item in data[1]:
+                        # Get file name
+                        name = query["NOMBRE"] + yesterday + " RC" + str(item[0]) + ".xlsx"
+                        # Get sql query
+                        sql = query["QUERY"] + str(item[0])
+                        # Fill list
+                        names_queries.append([name, sql])
         except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
+            # Write on the Log file.
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
         finally:
             # Write on the Log file.
-            self._write_log_file(message=answer.get_message())
-        # Return answer object.
-        return answer
+            self._write_log_file(message="End process " + process)
+        # Return names_queries.
+        return names_queries
+
+    def _pool_connection(self):
+        """
+        Obtiene los nombres y queries, luego crea un pool para crear varias conexiones simultáneas para luego
+        crear los archivos con la data obtenida.
+
+        Returns:
+            **data (list):** Lista de boolean.
+        """
+
+        # Variable process
+        process = inspect.stack()[0][3]
+        # Write on the Log file.
+        self._write_log_file(message="Start process " + process)
+        # Variable data
+        data = None
+        try:
+            # Validate setup status
+            if self.__setup["CONNECTION"] == 1:
+                # Read to get file names and queries from txt file
+                names_queries = self._get_names_and_queries()
+                # Create pool with the half of CPU cores
+                pool = Pool(processes=round(cpu_count() / 2))
+                # Create xlsx file.
+                data = pool.map(self._create_book, names_queries)
+                # Close pool
+                pool.close()
+                pool.join()
+            else:
+                # Write on the Log file.
+                self._write_log_file(message="CONNECTION in SETUP is not enabled")
+        except Exception as exc:
+            # Show error message in console
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
+        finally:
+            # Write on the Log file.
+            self._write_log_file(message="End process " + process)
+        # Return data.
+        return data
 
     def _read_data(self, query):
         """
@@ -197,75 +219,104 @@ class Req2022_393:
             **query (String):** Sentencia select.
 
         Returns:
-            **answer (Class):** Devuelve un estado, mensaje y datos (Dict) de la función.
+            **data (List):** Lista con columnas y valores.
         """
 
+        # Variable process
+        process = inspect.stack()[0][3]
+        # Write on the Log file.
+        self._write_log_file(message="Start process " + process)
+        # Invoke class Connection.
         cnx = Connection()
-        # Invoke class Answer.
-        answer = Answer()
+        # variable data
+        data = None
         try:
+            # Read data
+            data = cnx.read_data(query=query, datatype='list').get_data()
             # Write on the Log file.
-            self._write_log_file(message='Opening connection and Getting data')
-            cnx1 = cnx.read_data(query=query, datatype='list')
-            # Fill answer object with status, message and data.
-            if cnx1.get_status():
-                answer.load(status=True,
-                            message="Data obtained",
-                            data=cnx1.get_data())
-            else:
-                answer.load(status=cnx1.get_status(),
-                            message=cnx1.get_message())
+            self._write_log_file(message='Data obtained of: ' + query)
         except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
-        # Return answer object.
-        return answer
+            # Write on the Log file.
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
+        finally:
+            # Write on the Log file.
+            self._write_log_file(message="End process " + process)
+        # Return data.
+        return data
+
+    def _read_setup(self):
+        """
+        Llama a 'read_setup()' desde 'main_functions', para leer y obtener los datos desde el JSON.
+
+        """
+
+        try:
+            # Read SETUP configuration from JSON file.
+            config = mf.read_setup(item='SETUP')
+            # Validate read status
+            if config.get_status():
+                self.__setup["CONNECTION"] = config.get_data()["CONNECTION"]
+                self.__setup["FTP"] = config.get_data()["FTP"]
+                self.__setup["EMAIL"] = config.get_data()["EMAIL"]
+                self.__setup["CLUSTERS"] = config.get_data()["CLUSTERS"]
+            # Show message in console.
+            print(config.get_message())
+        except Exception as exc:
+            # Show error message in console.
+            print(self.__this + inspect.stack()[0][3] + ': ' + str(exc))
 
     def _send_file_ftp(self):
         """
-        Llama la función 'upload_file' de la clase 'ConnectionFTP' para enviar un archivo al FTP.
-
-        Returns:
-            **answer (Class):** Devuelve un estado y mensaje de la función.
+        Llama la función 'upload_file' de la clase 'ConnectionFTP' para enviar archivos al FTP desde la carpeta File.
 
         """
-        # Invoke class Answer.
-        answer = Answer()
-        # Open connection to FTP server and write on txt log
+
+        # Variable process
+        process = inspect.stack()[0][3]
+        # Write on the Log file.
+        self._write_log_file(message="Start process " + process)
+        # Invoke class ConnectionFTP.
+        ftp = ConnectionFTP()
         try:
-            ftp = self.__ftp.get_connection()
-            if ftp.get_status():
-                # Change path on FTP and write on txt log
-                self._write_log_file(self.__ftp.change_path().get_message())
-                # Loop on the xlsx files in the Files folder
-                for file in scandir(abspath("Files")):
-                    if file.is_file():
-                        print(self.__ftp.upload_file(file.path, basename(file)).get_message())
-                        remove(file.path)
-                        # Fill answer object with status, message and data.
-                self.__ftp.close_connection()
-                answer.load(status=True,
-                            message="Data obtained")
+            # Validate setup status
+            if self.__setup["FTP"] == 1:
+                # Open connection to FTP server
+                cnx = ftp.get_connection()
+                # Validate connection status
+                if cnx.get_status():
+                    # Change path on FTP and write on txt log
+                    change = ftp.change_path()
+                    # Write on the Log file.
+                    self._write_log_file(message=change.get_message())
+                    # Validate path change status
+                    if change.get_status():
+                        # Loop on the xlsx files in the Files folder
+                        for file in scandir(abspath("Files")):
+                            # Validate if it is a file
+                            if file.is_file():
+                                # Upload file to ftp
+                                upload = ftp.upload_file(file.path, basename(file))
+                                # Write on the Log file.
+                                self._write_log_file(message=upload.get_message())
+                                # Validate if the file was sent
+                                if upload.get_status():
+                                    # Delete local file
+                                    remove(file.path)
+                    # Close connection
+                    ftp.close_connection()
+                else:
+                    # Write on the Log file.
+                    self._write_log_file(message=cnx.get_message())
             else:
-                answer.load(status=ftp.get_status(),
-                            message=ftp.get_message())
+                # Write on the Log file.
+                self._write_log_file(message="FTP in SETUP is not enabled")
         except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
-            self._send_email(body=error_message)
+            # Write on the Log file.
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
+            self._send_email(body=self.__this + process + ': ' + str(exc))
         finally:
             # Write on the Log file.
-            self._write_log_file(message=answer.get_message())
+            self._write_log_file(message="End process " + process)
 
     def _send_email(self, body):
         """
@@ -274,46 +325,45 @@ class Req2022_393:
         Params:
             **body (String):** Cuerpo del correo electrónico.
 
-        Returns:
-            **answer (Class):** Devuelve un estado y mensaje de la función.
         """
 
-        # Invoke class Answer.
-        answer = Answer()
+        # Variable process
+        process = inspect.stack()[0][3]
         # Write on the Log file.
-        self._write_log_file('Preparing to send email')
+        self._write_log_file(message="Start process " + process)
+        # Invoke class EmailSMTP.
+        email = EmailSMTP()
         try:
-            body = "Ocurrió un error durante la ejecución del proceso \n" + body
-            email = self.__email.send_email(body=body, html=True)
-            # Fill answer object with status, message and data.
-            answer.load(status=email.get_status(),
-                        message=email.get_message())
+            # Validate setup status
+            if self.__setup["EMAIL"] == 1:
+                # Build body variable
+                body = "Ocurrió un error durante la ejecución del proceso \n" + body
+                # Send email and Write on the Log file.
+                self._write_log_file(message=email.send_email(body=body, html=True).get_message())
+            else:
+                # Write on the Log file.
+                self._write_log_file(message="Email in SETUP is not enabled")
         except Exception as exc:
-            # Fill variable error
-            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
-            # Show error message in console
-            print(error_message)
-            # Fill answer object with status and error message.
-            answer.load(status=False,
-                        message=error_message)
+            # Write on the Log file.
+            self._write_log_file(message=self.__this + process + ': ' + str(exc))
         finally:
             # Write on the Log file.
-            self._write_log_file(message=answer.get_message())
-        # Return answer object.
-        return answer
+            self._write_log_file(message="End process " + process)
 
     def _write_log_file(self, message):
         """
         Llama a 'write_file_text()' desde 'main_functions' y guarda el texto en el archivo plano.
 
-        Args:
+        Params:
             **message (String):** Dato a copiar en el archivo plano.
         """
 
-        # Write on the Log file.
+        # Variable final_message.
         final_message = '[' + mf.get_current_time().get_data() + ']: ' + message + '.'
+        # Write on the Log file.
         mf.write_file_text(file_name='Log/Log' + mf.get_current_date().get_data(),
                            message=final_message + '\n')
+        # Show message in console.
         print(final_message)
 
 

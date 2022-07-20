@@ -6,11 +6,10 @@ Created on Mon Jul 11 17:00:00 2022
 """
 
 import inspect
-
-from answer import Answer
-import main_functions as mf
 from ftplib import FTP
 import pysftp
+from answer import Answer
+import main_functions as mf
 
 
 class ConnectionFTP:
@@ -140,13 +139,12 @@ class ConnectionFTP:
         try:
             # Choose the type of server.
             if str(self.__connection_data["type"]).upper() == "FTP":
-                f = open(original_file, 'rb')
-                self.__connection.storbinary('STOR ' + end_file, f)
-                f.close()
+                with open(original_file, 'rb') as file:
+                    self.__connection.storbinary('STOR ' + end_file, file)
             elif str(self.__connection_data["type"]).upper() == "SFTP":
                 self.__connection.put(original_file, end_file)
             answer.load(status=True,
-                        message='Uploaded file to ' + self.__connection_data["type"])
+                        message=end_file + ' file was uploaded to ' + self.__connection_data["type"])
         except (pysftp.CredentialException, pysftp.ConnectionException, Exception) as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)

@@ -156,7 +156,7 @@ class Connection:
             else:
                 answer.load(status=cnx.get_status(),
                             message=cnx.get_message())
-        except (ConnectionError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError, Exception) as exc:
+        except (ConnectionError, Exception) as exc:
             # Fill variable error
             error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
             # Show error message in console

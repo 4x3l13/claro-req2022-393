@@ -6,17 +6,17 @@ Created on Mon Jul 11 17:00:00 2022
 """
 
 import inspect
+from os import scandir, remove
+from os.path import abspath, basename
+from multiprocessing import cpu_count, Pool, current_process
 import main_functions as mf
 from answer import Answer
 from connection import Connection
 from connection_ftp import ConnectionFTP
 from email_smtp import EmailSMTP
-from os import scandir, remove
-from os.path import abspath, basename
-from multiprocessing import cpu_count, Pool
 
 
-class Req2022_393:
+class Req2022393:
     """
     Esta es la clase principal de la aplicación, trabaja en BackEnd, no posee FrontEnd.\n
     En el archivo de configuración **config.json** están las diferentes secciones
@@ -73,8 +73,9 @@ class Req2022_393:
             **status (boolean):** estado del método.
 
         """
+
         # Variable process
-        process = inspect.stack()[0][3]
+        process = inspect.stack()[0][3] + " - " + current_process().name
         # Write on the Log file.
         self._write_log_file(message="Start process " + process)
         # Variable status
@@ -223,7 +224,7 @@ class Req2022_393:
         """
 
         # Variable process
-        process = inspect.stack()[0][3]
+        process = inspect.stack()[0][3] + " - " + current_process().name
         # Write on the Log file.
         self._write_log_file(message="Start process " + process)
         # Invoke class Connection.
@@ -368,4 +369,4 @@ class Req2022_393:
 
 
 if __name__ == '__main__':
-    main = Req2022_393()
+    main = Req2022393()

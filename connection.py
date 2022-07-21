@@ -170,6 +170,71 @@ class Connection:
         # Return answer object.
         return answer
 
+    def read_data(self, query, datatype="dict"):
+        """
+        Permite ejecutar una consulta en la base de datos y devuelve los datos encontrados.
+
+        Params:
+            * **query (String):** Recibe un select o un procedimiento almacenado. \n
+            * **datatype (String, optional):** Identifica que tipo de dato a retornar. \n
+            \t* **dict:** diccionario, por defecto. \n
+            \t* **list:** lista con las columnas y otra con los valores.
+
+        Returns:
+            **answer (Class):** Devuelve estado, mensaje y datos (diccionario, lista) de la función.
+
+        """
+
+        # Invoke class Answer.
+        answer = Answer()
+        try:
+            # Open connection
+            cnx = self._get_connection()
+            if cnx.get_status():
+                # Create cursor object.
+                cursor = self.__connection.cursor()
+                cursor.prefetchrows = 10000
+                cursor.arraysize = 10000
+
+                # Execute query
+                cursor.execute(query)
+                # Gets data
+                data = cursor.fetchall()
+                # Gets column_names
+                columns = [column[0].upper() for column in cursor.description]
+                # Validate the datatype to return
+                if datatype == 'dict':
+                    dictionary = []
+                    for item in data:
+                        dictionary.append(dict(zip(columns, item)))
+                    # Fill answer object with status, message and data list.
+                    answer.load(status=True,
+                                message='Data obtained',
+                                data=dictionary)
+                elif datatype == 'list':
+                    # Fill answer object with status, message and data list.
+                    answer.load(status=True,
+                                message='Data obtained',
+                                data=[columns, data])
+                # Close cursor
+                cursor.close()
+            else:
+                answer.load(status=cnx.get_status(),
+                            message=cnx.get_message())
+        except (ConnectionError, Exception) as exc:
+            # Fill variable error
+            error_message = self.__this + inspect.stack()[0][3] + ': ' + str(exc)
+            # Show error message in console
+            print(error_message)
+            # Fill answer object with status and error message.
+            answer.load(status=False,
+                        message=error_message)
+        finally:
+            # Close connection
+            self._close_connection()
+        # Return answer object.
+        return answer
+
     def _read_setup(self):
         """
         Llama a 'read_setup()' desde 'main_functions', para leer y obtener los datos desde el JSON.

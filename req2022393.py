@@ -86,7 +86,9 @@ class Req2022393:
             # Validate values variable
             if values is not None:
                 # Creates book and Write on the Log file.
-                self._write_log_file(message=mf.write_file_xlsx("Files/" + data[0], values[0], values[1]).get_message())
+                self._write_log_file(message=mf.write_file_xlsx(file_name="Files/" + data[0],
+                                                                name_columns=values[0],
+                                                                data=values[1]).get_message())
         except Exception as exc:
             # Write on the Log file.
             self._write_log_file(message=self.__this + process + ': ' + str(exc))

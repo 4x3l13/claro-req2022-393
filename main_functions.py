@@ -18,7 +18,7 @@ import inspect
 import json
 import os
 from datetime import datetime, timedelta
-import openpyxl
+import xlsxwriter
 from answer import Answer
 
 
@@ -266,7 +266,7 @@ def write_file_text(file_name, message):
     return answer
 
 
-def write_file_xlsx(file_name, column_names, row_values):
+def write_file_xlsx(file_name, name_columns, data):
     """
     Crear un archivo xlsx.
     Params:
@@ -282,16 +282,24 @@ def write_file_xlsx(file_name, column_names, row_values):
     answer = Answer()
     try:
         # Create workbook
-        workbook = openpyxl.Workbook()
+        workbook = xlsxwriter.Workbook(file_name)
+        # Create format
+        format5 = workbook.add_format({'num_format': 'dd/mm/yy hh:mm:ss'})
         # Create sheet
-        sheet = workbook.active
-        # Add column names
-        sheet.append(column_names)
+        sheet = workbook.add_worksheet()
+        for index_col, col in enumerate(name_columns):
+            sheet.write(0, index_col, col)
         # Add row values
-        for item in row_values:
-            sheet.append(item)
+        # Loop rows
+        for index_row, rows in enumerate(data):
+            # Loop columns
+            for index_col, column in enumerate(rows):
+                if index_col == 0:
+                    sheet.write(index_row + 1, index_col, column, format5)
+                else:
+                    sheet.write(index_row + 1, index_col, column)
         # Save workbook
-        workbook.save(file_name)
+        workbook.close()
         # Fill answer object with status and message.
         answer.load(status=True,
                     message='The file ' + file_name + " was saved")

@@ -166,6 +166,9 @@ class Req2022393:
                         sql = query["QUERY"] + str(item[0])
                         # Fill list
                         names_queries.append([name, sql])
+            else:
+                # Send email
+                self._send_email("Hubo un error leyendo la base de datos, revisar el log para más información.")
         except Exception as exc:
             # Write on the Log file.
             self._write_log_file(message=self.__this + process + ': ' + str(exc))
@@ -305,17 +308,26 @@ class Req2022393:
                                 if upload.get_status():
                                     # Delete local file
                                     remove(file.path)
+                                else:
+                                    # Send email
+                                    self._send_email(body=upload.get_message())
+                    else:
+                        # Send email
+                        self._send_email(body=change.get_message())
                     # Close connection
                     ftp.close_connection()
                 else:
                     # Write on the Log file.
                     self._write_log_file(message=cnx.get_message())
+                    # Send email
+                    self._send_email(body=cnx.get_message())
             else:
                 # Write on the Log file.
                 self._write_log_file(message="FTP in SETUP is not enabled")
         except Exception as exc:
             # Write on the Log file.
             self._write_log_file(message=self.__this + process + ': ' + str(exc))
+            # Send email
             self._send_email(body=self.__this + process + ': ' + str(exc))
         finally:
             # Write on the Log file.
@@ -340,7 +352,7 @@ class Req2022393:
             # Validate setup status
             if self.__setup["EMAIL"] == 1:
                 # Build body variable
-                body = "Ocurrió un error durante la ejecución del proceso \n" + body
+                body = "Ocurrió un error durante la ejecución del proceso. \n" + body
                 # Send email and Write on the Log file.
                 self._write_log_file(message=email.send_email(body=body, html=True).get_message())
             else:

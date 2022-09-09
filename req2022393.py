@@ -8,7 +8,7 @@ Created on Mon Jul 11 17:00:00 2022
 import inspect
 from os import scandir, remove
 from os.path import abspath, basename
-from multiprocessing import cpu_count, Pool, current_process
+from multiprocessing import cpu_count, Pool, current_process, freeze_support
 import main_functions as mf
 from answer import Answer
 from connection import Connection
@@ -383,4 +383,5 @@ class Req2022393:
 
 
 if __name__ == '__main__':
+    freeze_support()
     main = Req2022393()
